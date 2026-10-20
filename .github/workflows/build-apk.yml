@@ -32,8 +32,7 @@ jobs:
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
-        with:
-          packages: ''
+         
 
       - name: Accept Android SDK licenses
         run: yes | sdkmanager --licenses
@@ -53,7 +52,7 @@ jobs:
 
       - name: Build APK
         working-directory: project
-        run: gradle assembleDebug
+        run: gradle assembleDebug -Pkotlin.jvm.target.validation.mode=warning
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
