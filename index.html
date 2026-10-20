@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#050b17">
+<title>J.A.R.V.I.S.</title>
+<style>
+:root{--cyan:#66e5ff;--blue:#159fff;--panel:#091b2c;--muted:#7ba8bc}
+*{box-sizing:border-box}body{margin:0;background:#030914;color:#bcefff;font-family:system-ui,Roboto,sans-serif;min-height:100vh;background-image:linear-gradient(#143b5226 1px,transparent 1px),linear-gradient(90deg,#143b5226 1px,transparent 1px);background-size:25px 25px}
+main{max-width:720px;margin:auto;padding:20px 14px 26px}header{text-align:center;letter-spacing:5px;font-size:11px;color:var(--muted)}h1{font-size:29px;letter-spacing:7px;color:var(--cyan);text-shadow:0 0 20px #0b8fff;margin:4px}
+#reactor{width:158px;height:158px;margin:20px auto;border:2px solid var(--cyan);border-radius:50%;display:grid;place-items:center;position:relative;box-shadow:0 0 20px #008bff77,inset 0 0 22px #008bff44;animation:pulse 3s infinite}
+#reactor:before,#reactor:after{content:"";position:absolute;border:1px dashed #36baff;border-radius:50%;inset:9px;animation:spin 15s linear infinite}
+#reactor:after{inset:20px;border-style:solid;animation-direction:reverse;animation-duration:8s}
+#core{width:63px;height:63px;border-radius:50%;z-index:1;background:radial-gradient(circle,#fff 0,#a6f5ff 20%,#168fff 62%,#07182c 75%);box-shadow:0 0 30px #2adfff}
+@keyframes pulse{50%{transform:scale(1.035);box-shadow:0 0 36px #008bffbb}}@keyframes spin{to{transform:rotate(360deg)}}
+#status{text-align:center;font-size:11px;letter-spacing:3px;color:#62dfff}.row{display:flex;gap:8px;margin-top:10px}.row>*{min-width:0}
+button,input,select{font:inherit;border:1px solid #236d94;border-radius:9px;background:#07192a;color:#c8f4ff;padding:12px}button{cursor:pointer}button:active{background:#123a5b}#chat{height:32vh;min-height:170px;max-height:330px;overflow:auto;margin:18px 0;padding:3px;border-top:1px solid #1c536d;border-bottom:1px solid #1c536d}
+.msg{white-space:pre-wrap;overflow-wrap:anywhere;background:#081b2b;border-left:2px solid var(--cyan);padding:11px;margin:9px 0;border-radius:4px;font-size:14px}.user{border-color:#efb65c;color:#ffe0a5}.error{border-color:#ff647c;color:#ffc4ce}#message{flex:1;width:100%}#send{color:var(--cyan)}#mic{min-width:48px}#settings{width:100%;margin-top:9px}.hint{font-size:11px;color:var(--muted);line-height:1.6;margin-top:10px}
+</style>
+</head>
+<body><main>
+<header><h1>J.A.R.V.I.S.</h1>PERSONAL AI SYSTEM · MOBILE EDITION</header>
+<div id="reactor"><div id="core"></div></div>
+<div id="status">SYSTEM ONLINE · READY</div>
+<div id="chat" aria-live="polite"><div class="msg">JARVIS: Vanakkam! Naan ready. Ask me anything.</div></div>
+<div class="row"><input id="message" placeholder="Ask JARVIS..." autocomplete="off"><button id="send">SEND</button><button id="mic" title="Speak">🎙</button></div>
+<div class="row"><select id="lang" aria-label="Voice language" style="flex:1"><option value="ta">Tamil</option><option value="en">English</option></select><button id="voice">🔊 Voice ON</button></div>
+<button id="settings">⚙ API SETTINGS</button>
+<div class="hint">AI replies require your own API key and internet. Voice input uses Android speech recognition. Chat history is stored locally on this device. This app does not silently execute phone actions.</div>
+</main>
+<script>
+const $=id=>document.getElementById(id), chat=$('chat');
+let history=[];let busy=false,voiceOn=true;
+try{history=JSON.parse(localStorage.getItem('jarvis_history')||'[]').slice(-20);history.forEach(m=>add(m.role==='user'?'YOU':'JARVIS',m.content,m.role==='user'?'user':''));}catch(e){history=[]}
+function add(who,text,cls=''){const el=document.createElement('div');el.className='msg '+cls;el.textContent=who+': '+text;chat.appendChild(el);chat.scrollTop=chat.scrollHeight;return el}
+function save(){try{localStorage.setItem('jarvis_history',JSON.stringify(history.slice(-20)))}catch(e){}}
+function speak(text){if(voiceOn&&window.AndroidJarvis)AndroidJarvis.speak(text,$('lang').value)}
+async function send(){const text=$('message').value.trim();if(!text||busy)return;busy=true;$('send').disabled=true;$('status').textContent='PROCESSING REQUEST...';add('YOU',text,'user');$('message').value='';AndroidJarvis.ask(text,JSON.stringify(history.slice(-10)))}
+window.jarvisResponse=raw=>{busy=false;$('send').disabled=false;let d;try{d=JSON.parse(raw)}catch(e){d={error:'Unexpected response'}}if(d.error){add('SYSTEM',d.error,'error');$('status').textContent='CHECK API SETTINGS'}else{add('JARVIS',d.reply);history.push({role:'user',content:lastUser},{role:'assistant',content:d.reply});history=history.slice(-20);save();speak(d.reply);$('status').textContent='SYSTEM ONLINE · READY'}};
+let lastUser='';const oldSend=send;
+async function doSend(){const text=$('message').value.trim();if(!text||busy)return;lastUser=text;await oldSend()}
+$('send').addEventListener('click',doSend);$('message').addEventListener('keydown',e=>{if(e.key==='Enter')doSend()});
+$('mic').addEventListener('click',()=>{if(window.AndroidJarvis){$('status').textContent='LISTENING...';AndroidJarvis.startListening($('lang').value)}});
+window.jarvisSpeechResult=text=>{if(text){$('message').value=text;doSend()}else $('status').textContent='VOICE INPUT CANCELLED'};
+$('voice').addEventListener('click',()=>{voiceOn=!voiceOn;$('voice').textContent=voiceOn?'🔊 Voice ON':'🔇 Voice OFF'});
+$('settings').addEventListener('click',()=>AndroidJarvis.configureApiKey());
+window.jarvisApiStatus=ok=>{$('status').textContent=ok?'API CONFIGURED · READY':'API KEY NEEDED'};
+</script></body></html>
